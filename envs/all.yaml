@@ -1,0 +1,12 @@
+channels:
+- conda-forge
+- bioconda
+- defaults
+dependencies:
+- r-fdrtool
+- r-tidyverse
+- r-jsonlite
+- r-feather
+- scikit-learn
+- pandas=1.0.3
+- pyarrow=0.16.0
