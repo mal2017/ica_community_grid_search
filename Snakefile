@@ -13,7 +13,8 @@ STEP_COMPS = config.get("step_comps", 2)
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
-RELATIONS = ["spearman","pearson"]
+RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
+             "spearman-signed","pearson-signed","bicor-tom-signed"]
 
 rule target:
     input:
@@ -38,7 +39,8 @@ rule pearson:
     input:
         rules.standardize.output,
     output:
-        "pearson.feather"
+        signed = "pearson-signed.feather",
+        abs = "pearson-abs.feather"
     conda:
         "envs/all.yaml"
     script:
@@ -48,11 +50,25 @@ rule spearman:
     input:
         rules.standardize.output,
     output:
-        "spearman.feather"
+        signed="spearman-signed.feather",
+        abs="spearman-abs.feather"
     conda:
         "envs/all.yaml"
     script:
         "scripts/spearman.py"
+
+rule bicor_tom:
+    input:
+        rules.standardize.output,
+    output:
+        signed = "bicor-tom-signed.feather",
+        abs = "bicor-tom-abs.feather"
+    conda:
+        "envs/all.yaml"
+    threads:
+        4
+    script:
+        "scripts/bicor_tom.R"
 
 rule ica:
     input:
