@@ -13,13 +13,16 @@ STEP_COMPS = config.get("step_comps", 2)
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
+RELATIONS = ["spearman","pearson"]
+
 rule target:
     input:
-        expand("neighbors_{r}.json",r=["spearman","pearson"]),
+        expand("neighbors_{r}.json",r=RELATIONS),
         expand("ica_{c}comps_{q}qval.json", c=COMPONENTS, q=QVALS),
-        expand("igp_{r}_grid.csv",r=["spearman","pearson"]),
+        expand("igp_{r}_grid.csv",r=RELATIONS),
         "standardized.feather",
         expand("ica_{c}comps.csv",c = COMPONENTS),
+        "igp.pdf"
 
 rule standardize:
     input:
@@ -50,7 +53,6 @@ rule spearman:
         "envs/all.yaml"
     script:
         "scripts/spearman.py"
-
 
 rule ica:
     input:
@@ -108,3 +110,13 @@ rule collect_igp:
         head -n 1 {input[0]} > {output}
         tail -q -n +2 {input} >> {output}
         """
+
+rule plot_igp_maximization:
+    input:
+        expand("igp_{r}_grid.csv",r=RELATIONS),
+    output:
+        "igp.pdf"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/plot_igp.R"
