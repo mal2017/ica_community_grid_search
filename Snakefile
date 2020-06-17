@@ -2,13 +2,13 @@ random_seed = config.get("seed", 2020)
 
 DATA = config.get("data",None)
 
-MIN_QVAL = int(config.get("min_qval",0.002) * 1000)
-MAX_QVAL = int(config.get("max_qval",0.2) * 1000)
-STEP_QVAL = int(config.get("step_qval", 0.002) * 1000)
+MIN_QVAL = int(config.get("min_qval",0.005) * 1000)
+MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
+STEP_QVAL = int(config.get("step_qval", 0.005) * 1000)
 
 MIN_COMPS = config.get("min_comps",50)
-MAX_COMPS = config.get("max_comps",600)
-STEP_COMPS = config.get("step_comps", 2)
+MAX_COMPS = config.get("max_comps",500)
+STEP_COMPS = config.get("step_comps", 10)
 
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
