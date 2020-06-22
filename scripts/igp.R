@@ -10,6 +10,7 @@ ifl <- snakemake@input[['communities']]
 ofl <- snakemake@output[[1]]
 qval <- snakemake@wildcards[['fdr']]
 comps <- snakemake@wildcards[['components']]
+rep <- snakemake@wildcards[['rep']]
 
 # --------------
 # get input data
@@ -48,6 +49,6 @@ cIGP <- function(c, mods, nn_list) {
 # ---------------------------------
 igps <- map_dbl(names(mods), cIGP, mods, nn)
 
-df <- tibble(community = names(mods), igp =igps,qval = qval,components = comps)
+df <- tibble(community = names(mods), igp =igps,qval = qval,components = comps, rep=rep)
 
 write_csv(df, ofl)

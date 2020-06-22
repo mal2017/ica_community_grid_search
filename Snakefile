@@ -1,4 +1,4 @@
-random_seed = config.get("seed", 2020)
+#random_seed = config.get("seed", 2020)
 
 DATA = config.get("data",None)
 
@@ -7,8 +7,10 @@ MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
 STEP_QVAL = int(config.get("step_qval", 0.005) * 1000)
 
 MIN_COMPS = config.get("min_comps",50)
-MAX_COMPS = config.get("max_comps",500)
+MAX_COMPS = config.get("max_comps",500) + 1
 STEP_COMPS = config.get("step_comps", 10)
+
+REPS = range(1,config.get("reps",1) + 1,1)
 
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
@@ -16,13 +18,17 @@ QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
+
+#print(expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS))
+#print(QVALS)
+
 rule target:
     input:
         expand("neighbors_{r}.json",r=RELATIONS),
-        expand("ica_{c}comps_{q}qval.json", c=COMPONENTS, q=QVALS),
+        expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
         expand("igp_{r}_grid.csv",r=RELATIONS),
         "standardized.feather",
-        expand("ica_{c}comps.csv",c = COMPONENTS),
+        expand("ica_{c}comps_rep{rep}.csv",c = COMPONENTS,rep=REPS),
         "igp.pdf"
 
 rule standardize:
@@ -74,9 +80,7 @@ rule ica:
     input:
         rules.standardize.output,
     output:
-        "ica_{components}comps.csv"
-    params:
-        random_seed = random_seed
+        "ica_{components}comps_rep{rep}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -86,9 +90,8 @@ rule fdr:
     input:
         rules.ica.output,
     output:
-        "ica_{components}comps_{fdr}qval.json"
+        "ica_{components}comps_rep{rep}_{fdr}qval.json"
     params:
-        seed = random_seed,
         q = lambda wc: float(wc.fdr)
     conda:
         "envs/all.yaml"
@@ -110,7 +113,7 @@ rule igp:
         communities = rules.fdr.output,
         nn = rules.neighbors.output,
     output:
-        "igp_{components}comps_{fdr}qval_{relation}.csv"
+        "igp_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -118,7 +121,7 @@ rule igp:
 
 rule collect_igp:
     input:
-        lambda wc: expand("igp_{c}comps_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=wc.relation),
+        lambda wc: expand("igp_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=wc.relation, rep=REPS),
     output:
         "igp_{relation}_grid.csv"
     shell:
