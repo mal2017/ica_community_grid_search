@@ -149,7 +149,7 @@ rule run_topgo:
     params:
         qval = lambda wc: wc.fdr
     conda:
-        "envs/all.yaml"
+        "envs/topgo.yaml"
     script:
         "scripts/go_enr.R"
 
