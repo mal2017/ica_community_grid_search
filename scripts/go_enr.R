@@ -2,6 +2,7 @@ library(tidyverse)
 library(topGO)
 library(org.Dm.eg.db)
 
+# qval_df <- read_csv("test/ica_20comps_rep1_qvalues.csv.gz")
 qval_df <- read_csv(snakemake@input[[1]])
 ofl <- snakemake@output[[1]]
 qval <- snakemake@params[["qval"]]

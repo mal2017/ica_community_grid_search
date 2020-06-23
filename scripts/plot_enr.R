@@ -16,7 +16,6 @@ df <- fls %>%
   unnest(cols=c(df))
 
 
-
 df <- df %>% group_by(comps,rep,qval,cluster) %>%
   top_n(5,score) %>%
   summarise(score=sum(score)) %>%
@@ -31,7 +30,8 @@ g <- ggplot(df,aes(as.integer(comps),qval,fill=score)) +
   theme_minimal() +
   theme(aspect.ratio = 1) +
   scale_fill_viridis_c()+
-  xlab("components")
+  xlab("components") +
+  facet_wrap(~ont)
 
 
 ggsave(snakemake@output[[1]], g)
