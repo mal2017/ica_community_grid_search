@@ -22,7 +22,7 @@ RELATIONS = ["bicor-tom-abs"]
 
 FUNCTIONAL = ["top5Enr"]
 
-ONTS = ["BP"]
+ONTS = ["BP","MF","CC"]
 
 rule target:
     input:
