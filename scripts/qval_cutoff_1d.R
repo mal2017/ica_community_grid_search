@@ -6,18 +6,11 @@ ifl <- snakemake@input[[1]]
 ofl <- snakemake@output[[1]]
 q <- snakemake@params[['q']]
 
-set.seed(snakemake@params[['seed']])
+qval_df <- read_csv(ifl)
 
-ica_raw <- read_csv(ifl)
-
-qval_df <- ica_raw %>%
-  gather(module,weight,-X1) %>%
-  group_by(module) %>%
-  mutate(qval = fdrtool(weight,plot=F,verbose = F)[['qval']]) %>%
+modules <- qval_df %>% 
   filter(qval <= q) %>%
-  ungroup()
-
-modules <- qval_df %>% split(.,.$module) %>%
+  split(.,.$module) %>%
   map(pull,X1)
 
 jsonlite::write_json(modules, ofl)
