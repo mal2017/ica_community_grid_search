@@ -148,8 +148,8 @@ rule run_topgo:
         "enr_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
     params:
         qval = lambda wc: wc.fdr
-    conda:
-        "envs/topgo.yaml"
+    #conda:
+    #    "envs/topgo.yaml"
     script:
         "scripts/go_enr.R"
 
