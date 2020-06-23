@@ -158,5 +158,7 @@ rule plot_enr_maximization:
         expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS)
     output:
         "enr.pdf"
+    conda:
+        "envs/all.yaml"
     script:
         "scripts/plot_enr.R"

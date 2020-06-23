@@ -1,7 +1,5 @@
 library(tidyverse)
 library(topGO)
-library(jsonlite)
-library(clusterProfiler)
 library(org.Dm.eg.db)
 
 qval_df <- read_csv(snakemake@input[[1]])
@@ -11,7 +9,7 @@ ont <- snakemake@wildcards[["ont"]]
 
 
 # http://avrilomics.blogspot.com/2015/07/using-topgo-to-test-for-go-term.html
-# https://bioconductor.org/packages/release/bioc/vignettes/topGO/inst/doc/topGO.pdf  
+# https://bioconductor.org/packages/release/bioc/vignettes/topGO/inst/doc/topGO.pdf
 
 ag <- qval_df %>% dplyr::select(module,X1,qval) %>%
   mutate(module=as.numeric(module)) %>%
@@ -22,8 +20,8 @@ ag <- qval_df %>% dplyr::select(module,X1,qval) %>%
 
 
 # func to select significant
-#selection <- function(allScore){ return(allScore < snakemake@params[["qval"]])} 
-selection <- function(allScore){ return(allScore < qval)} 
+#selection <- function(allScore){ return(allScore < snakemake@params[["qval"]])}
+selection <- function(allScore){ return(allScore < qval)}
 
 # ontology gene mapping
 allGO2genes <- annFUN.org(whichOnto=ont, mapping="org.Dm.eg.db", ID="ensembl")
@@ -37,16 +35,16 @@ res <- ag %>%
                 annot=annFUN.GO2genes,
                 GO2genes=allGO2genes,
                 geneSel=selection,
-                nodeSize=10)    
+                nodeSize=10)
 
   result <- runTest(GOdata, algorithm = "elim", statistic = "fisher")
-  
+
   allRes <- GenTable(GOdata, weight01 = result, topNodes = 10)
-  
-  allRes %>% as_tibble() %>% 
-    mutate(weight01= as.numeric(weight01)) %>% 
+
+  allRes %>% as_tibble() %>%
+    mutate(weight01= as.numeric(weight01)) %>%
     arrange(weight01)
-  
+
 },.id = "cluster")
 
 res %>%
@@ -56,8 +54,8 @@ res %>%
 
 
 # cl_df <- json_cl %>% enframe(name = "cluster",value = 'genes')
-# 
-# res <- cl_df %>% 
+#
+# res <- cl_df %>%
 #   head(3) %>%
 #   mutate(enr=map(genes,.f=function(x) {
 #     ego <- enrichGO(gene          = unlist(x),
@@ -70,17 +68,12 @@ res %>%
 #                     readable      = TRUE)
 #     ego <- gofilter(ego,level=7)
 #     ego2 <- simplify(ego)
-#     as_tibble(ego2)    
+#     as_tibble(ego2)
 #   }))
-# 
-# 
-# res %>% dplyr::select(cluster,enr) %>% 
+#
+#
+# res %>% dplyr::select(cluster,enr) %>%
 #   deframe() %>%
 #   bind_rows(.id="cluster") %>%
 #   group_by(cluster) %>% DT::datatable()
 # top_n(n = 10, wt = -log10(p.adjust)) %>% DT::datatable()
-
-
-
-
-
