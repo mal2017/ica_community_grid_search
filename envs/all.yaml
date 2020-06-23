@@ -11,3 +11,5 @@ dependencies:
 - pandas=1.0.3
 - pyarrow=0.16.0
 - r-wgcna
+- bioconductor-topgo
+- bioconductor-org.dm.eg.db
