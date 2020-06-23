@@ -18,18 +18,20 @@ QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
+RELATIONS = ["bicor-tom-abs"]
 
-#print(expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS))
-#print(QVALS)
+FUNCTIONAL = ["top5Enr"]
+
+ONTS = ["BP"]
 
 rule target:
     input:
-        expand("neighbors_{r}.json",r=RELATIONS),
-        expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
-        expand("igp_{r}_grid.csv",r=RELATIONS),
-        "standardized.feather",
-        expand("ica_{c}comps_rep{rep}.csv",c = COMPONENTS,rep=REPS),
-        "igp.pdf"
+        #expand("neighbors_{r}.json",r=RELATIONS),
+        #expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
+        #expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
+        "igp.pdf",
+        expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
+        "enr.pdf"
 
 rule standardize:
     input:
@@ -86,9 +88,19 @@ rule ica:
     script:
         "scripts/ica.py"
 
-rule fdr:
+rule fdr_calc:
     input:
         rules.ica.output,
+    output:
+        "ica_{components}comps_rep{rep}_qvalues.csv.gz"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/qval_calc.R"
+
+rule fdr_cut:
+    input:
+        rules.fdr_calc.output,
     output:
         "ica_{components}comps_rep{rep}_{fdr}qval.json"
     params:
@@ -110,7 +122,7 @@ rule neighbors:
 
 rule igp:
     input:
-        communities = rules.fdr.output,
+        communities = rules.fdr_cut.output,
         nn = rules.neighbors.output,
     output:
         "igp_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
@@ -119,23 +131,32 @@ rule igp:
     script:
         "scripts/igp.R"
 
-rule collect_igp:
-    input:
-        lambda wc: expand("igp_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=wc.relation, rep=REPS),
-    output:
-        "igp_{relation}_grid.csv"
-    shell:
-        """
-        head -n 1 {input[0]} > {output}
-        tail -q -n +2 {input} >> {output}
-        """
-
 rule plot_igp_maximization:
     input:
-        expand("igp_{r}_grid.csv",r=RELATIONS),
+        lambda wc: expand("igp_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS),
     output:
         "igp.pdf"
     conda:
         "envs/all.yaml"
     script:
         "scripts/plot_igp.R"
+
+rule run_topgo:
+    input:
+        rules.fdr_calc.output
+    output:
+        "enr_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
+    params:
+        qval = lambda wc: wc.fdr
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/go_enr.R"
+
+rule plot_enr_maximization:
+    input:
+        expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS)
+    output:
+        "enr.pdf"
+    script:
+        "scripts/plot_enr.R"
