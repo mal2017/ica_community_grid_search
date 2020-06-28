@@ -31,7 +31,7 @@ rule target:
         #expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
         "igp.pdf",
         expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
-        expand("enr_{o}.pdf",ont=ONTS)
+        expand("enr_{o}.pdf",o=ONTS)
 
 rule standardize:
     input:
