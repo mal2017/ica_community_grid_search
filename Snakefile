@@ -18,7 +18,7 @@ QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
-RELATIONS = ["bicor-tom-abs"]
+#RELATIONS = ["bicor-tom-abs"]
 
 FUNCTIONAL = ["top5Enr"]
 
