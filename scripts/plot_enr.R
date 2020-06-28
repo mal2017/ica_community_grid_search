@@ -2,6 +2,7 @@ library(tidyverse)
 
 fls <- snakemake@input
 
+#ifls <- Sys.glob("test/enr_*comps_rep1_*qval_*.csv")
 
 fls <- tibble(file = fls) %>%
   mutate(comps = str_extract(file,"(?<=_).+(?=comps)")) %>%
@@ -16,14 +17,16 @@ df <- fls %>%
   unnest(cols=c(df))
 
 
-df <- df %>% group_by(comps,rep,qval,cluster) %>%
+df <- df %>%
+  group_by(comps,rep,qval,cluster,ont) %>%
   top_n(5,score) %>%
-  summarise(score=sum(score)) %>%
+  summarise(score=sum(score)) %>% # get summarized score
+  group_by(comps,qval,cluster,ont) %>%
+  summarize(score=mean(score)) %>% # mean across reps
+  group_by(comps,qval,ont) %>%
   summarize(score=mean(score)) %>%
-  group_by(comps,qval) %>%
-  summarize(score=mean(score)) %>% 
   ungroup()
-  
+
 
 g <- ggplot(df,aes(as.integer(comps),qval,fill=score)) +
   geom_tile() +
