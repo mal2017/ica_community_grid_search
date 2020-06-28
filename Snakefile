@@ -31,7 +31,7 @@ rule target:
         #expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
         "igp.pdf",
         expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
-        "enr.pdf"
+        expand("enr_{o}.pdf",ont=ONTS)
 
 rule standardize:
     input:
@@ -155,9 +155,9 @@ rule run_topgo:
 
 rule plot_enr_maximization:
     input:
-        expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS)
+        lambda wc: expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=wc.ont)
     output:
-        "enr.pdf"
+        "enr_{ont}.pdf"
     conda:
         "envs/all.yaml"
     script:
