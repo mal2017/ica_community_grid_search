@@ -18,20 +18,14 @@ QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
-#RELATIONS = ["bicor-tom-abs"]
-
-FUNCTIONAL = ["top5Enr"]
-
 ONTS = ["BP","MF","CC"]
-
-ONTS = ["MF"]
 
 rule target:
     input:
         #expand("neighbors_{r}.json",r=RELATIONS),
-        #expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
         #expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
         #"igp.pdf",
+        expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
         expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
         expand("enr_{o}.pdf",o=ONTS)
 

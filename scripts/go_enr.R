@@ -2,7 +2,7 @@ library(tidyverse)
 library(topGO)
 library(org.Dm.eg.db)
 
-# qval_df <- read_csv("test/ica_20comps_rep1_qvalues.csv.gz")
+# qval_df <- read_csv("test/ica_50comps_rep1_qvalues.csv.gz")
 qval_df <- read_csv(snakemake@input[[1]])
 ofl <- snakemake@output[[1]]
 qval <- snakemake@params[["qval"]]
@@ -13,7 +13,7 @@ ont <- snakemake@wildcards[["ont"]]
 # https://bioconductor.org/packages/release/bioc/vignettes/topGO/inst/doc/topGO.pdf
 
 ag <- qval_df %>% dplyr::select(module,X1,qval) %>%
-  mutate(module=as.numeric(module)) %>%
+  mutate(module=module) %>%
   arrange(module) %>%
   split(.,.$module) %>%
   map(dplyr::select,X1,qval) %>%
