@@ -28,4 +28,14 @@
     {
         "time" : "8:00:00",      
     },
+    "plot_enr_maximization" :
+    {
+        "time" : "4:00:00",
+        "mem" : 128000,      
+    },
+    "plot_igp_maximization" :
+    {
+        "time" : "4:00:00", 
+        "mem" : 64000,           
+    },
 }
