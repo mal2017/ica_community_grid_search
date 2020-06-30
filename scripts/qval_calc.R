@@ -5,7 +5,7 @@ library(jsonlite)
 ifl <- snakemake@input[[1]]
 ofl <- snakemake@output[[1]]
 
-ica_raw <- read_csv(ifl)
+ica_raw <- read_csv(ifl) %>% dplyr::rename(X1=index)
 
 qval_df <- ica_raw %>%
   gather(module,weight,-X1) %>%
