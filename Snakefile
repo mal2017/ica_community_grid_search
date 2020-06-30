@@ -2,6 +2,8 @@
 
 DATA = config.get("data",None)
 
+TOPGO_NODES = config.get("topgo_nodes",10)
+
 MIN_QVAL = int(config.get("min_qval",0.005) * 1000)
 MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
 STEP_QVAL = int(config.get("step_qval", 0.005) * 1000)
@@ -143,7 +145,8 @@ rule run_topgo:
     output:
         "enr_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
     params:
-        qval = lambda wc: wc.fdr
+        qval = lambda wc: wc.fdr,
+        nodes = TOPGO_NODES,
     #conda:
     #    "envs/topgo.yaml"
     script:

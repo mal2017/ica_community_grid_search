@@ -7,7 +7,7 @@ qval_df <- read_csv(snakemake@input[[1]])
 ofl <- snakemake@output[[1]]
 qval <- snakemake@params[["qval"]]
 ont <- snakemake@wildcards[["ont"]]
-
+nodes <- snakemake@params[["nodes"]]
 
 # http://avrilomics.blogspot.com/2015/07/using-topgo-to-test-for-go-term.html
 # https://bioconductor.org/packages/release/bioc/vignettes/topGO/inst/doc/topGO.pdf
@@ -40,7 +40,7 @@ res <- ag %>%
 
   result <- runTest(GOdata, algorithm = "elim", statistic = "fisher")
 
-  allRes <- GenTable(GOdata, weight01 = result, topNodes = 10)
+  allRes <- GenTable(GOdata, weight01 = result, topNodes = nodes)
 
   allRes %>% as_tibble() %>%
     mutate(weight01= as.numeric(weight01)) %>%
