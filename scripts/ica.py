@@ -8,7 +8,6 @@ from sklearn.decomposition import FastICA
 
 X = pd.read_feather(snakemake.input[0])
 X.set_index('index',inplace=True)
-X = X.T
 ica = FastICA(n_components=int(snakemake.wildcards.components))
 source = ica.fit_transform(X)
 res = pd.DataFrame(source, X.index)
