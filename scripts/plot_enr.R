@@ -6,24 +6,25 @@ fls <- snakemake@input
 
 fls <- tibble(file = fls) %>%
   mutate(comps = str_extract(file,"(?<=fdr\\d{1}_).+(?=comps)")) %>%
+  mutate(ica = paste0("fdr",str_extract(file,"(?<=fdr)\\d{1}"))) %>%
   mutate(rep = str_extract(file,"(?<=rep).+(?=_0)")) %>%
   mutate(qval = str_extract(file,"(?<=rep\\d{1,2}_).+(?=qval)")) %>%
   mutate(ont= str_extract(file,"(?<=qval_).+(?=\\.csv)"))
 
 
 df <- fls %>%
-  mutate(df = map(file,read_csv)) %>%
+  mutate(df = map(file,read_csv, col_types="cccddddd")) %>%
   dplyr::select(-file) %>%
   unnest(cols=c(df))
 
 
 df <- df %>%
-  group_by(comps,rep,qval,cluster,ont) %>%
+  group_by(comps,rep,qval,cluster,ont,ica) %>%
   top_n(5,score) %>%
   summarise(score=sum(score)) %>% # get summarized score
-  group_by(comps,qval,cluster,ont) %>%
+  group_by(comps,qval,cluster,ont,ica) %>%
   summarize(score=mean(score)) %>% # mean across reps
-  group_by(comps,qval,ont) %>%
+  group_by(comps,qval,ont,ica) %>%
   summarize(score=mean(score)) %>%
   ungroup()
 
@@ -34,7 +35,7 @@ g <- ggplot(df,aes(as.integer(comps),qval,fill=score)) +
   theme(aspect.ratio = 1) +
   scale_fill_viridis_c()+
   xlab("components") +
-  facet_wrap(~ont)
+  facet_grid(ont~ica)
 
 
 ggsave(snakemake@output[[1]], g)
