@@ -18,7 +18,7 @@ df <- fls %>%
   unnest(cols=c(df))
 
 
-df <- df %>%
+g <- df %>%
   group_by(comps,rep,qval,cluster,ont,ica) %>%
   top_n(5,score) %>%
   summarise(score=sum(score)) %>% # get summarized score
@@ -26,16 +26,14 @@ df <- df %>%
   summarize(score=mean(score)) %>% # mean across reps
   group_by(comps,qval,ont,ica) %>%
   summarize(score=mean(score)) %>%
-  ungroup()
-
-
-g <- ggplot(df,aes(as.integer(comps),qval,fill=score)) +
-  geom_tile() +
-  theme_minimal() +
-  theme(aspect.ratio = 1) +
-  scale_fill_viridis_c()+
-  xlab("components") +
-  facet_grid(ont~ica)
+  ungroup() %>%
+  ggplot(aes(as.integer(comps),qval,fill=score)) +
+    geom_tile() +
+    theme_minimal() +
+    theme(aspect.ratio = 1) +
+    scale_fill_viridis_c()+
+    xlab("components") +
+    facet_grid(ont~ica)
 
 
 ggsave(snakemake@output[[1]], g)
