@@ -39,7 +39,8 @@ rule target:
         expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
         expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
         "enr.pdf",
-        "igp.pdf"
+        "igp.pdf",
+        "mgc.pdf"
 
 # ------------------------------------------------------------------------------
 # pre-processing
@@ -172,6 +173,9 @@ rule plot_igp_maximization:
     script:
         "scripts/plot_igp.R"
 
+# ------------------------------------------------------------------------------
+# enrichment
+# ------------------------------------------------------------------------------
 
 rule run_topgo:
     input:
@@ -196,6 +200,10 @@ rule plot_enr_maximization:
     script:
         "scripts/plot_enr.R"
 
+# ------------------------------------------------------------------------------
+# mean in-group correlation metrics
+# ------------------------------------------------------------------------------
+
 rule mgc:
     input:
         communities = rules.fdr_cut.output,
@@ -207,12 +215,12 @@ rule mgc:
     script:
         "scripts/mgc.R"
 
-#rule plot_mgc_maximization:
-#    input:
-#        expand("mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
-#    output:
-#        "mgc.pdf"
-#    conda:
-#        "envs/all.yaml"
-#    script:
-#        "scripts/plot_mgc.R"
+rule plot_mgc_maximization:
+    input:
+        expand("mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
+    output:
+        "mgc.pdf"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/plot_mgc.R"

@@ -21,7 +21,9 @@ corr <- read_feather(cfl)
 # -------------
 # process mat
 # -------------
-mat <- corr %>% column_to_rownames("index") %>% as.matrix()
+mat <- corr %>% 
+  column_to_rownames("index") %>% 
+  as.matrix()
 
 len <- ncol(mat)
 
