@@ -2,7 +2,7 @@
 
 DATA = config.get("data",None)
 
-TOPGO_NODES = config.get("topgo_nodes",10)
+TOPGO_NODES = config.get("topgo_nodes",100)
 
 MIN_QVAL = int(config.get("min_qval",0.005) * 1000)
 MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
@@ -17,6 +17,11 @@ REPS = range(1,config.get("reps",1) + 1,1)
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
+if config.get("is_test",False):
+    REPS = [1]
+    COMPONENTS = [20]
+    QVALS = [0.01]
+
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
@@ -24,12 +29,11 @@ ONTS = ["BP","MF","CC"]
 
 rule target:
     input:
-        #expand("neighbors_{r}.json",r=RELATIONS),
-        #expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
-        #"igp.pdf",
+        expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
         expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
         expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
-        expand("enr_{o}.pdf",o=ONTS)
+        expand("enr_{o}.pdf",o=ONTS),
+        #"igp.pdf",
 
 rule standardize:
     input:
