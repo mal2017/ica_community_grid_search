@@ -35,9 +35,9 @@ ICA_VERSIONS = [1,2]
 
 rule target:
     input:
-        expand("ica_fdr{v}_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS,v=ICA_VERSIONS),
-        expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
-        expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
+        #expand("ica_fdr{v}_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS,v=ICA_VERSIONS),
+        #expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
+        #expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
         "enr.pdf",
         "igp.pdf",
         "mgc.pdf"
@@ -50,7 +50,7 @@ rule standardize:
     input:
         DATA
     output:
-        "standardized.feather"
+        "data/standardized.feather"
     conda:
         "envs/all.yaml"
     script:
@@ -65,8 +65,8 @@ rule pearson:
     input:
         rules.standardize.output,
     output:
-        signed = "pearson-signed.feather",
-        abs = "pearson-abs.feather"
+        signed = "data/pearson-signed.feather",
+        abs = "data/pearson-abs.feather"
     conda:
         "envs/all.yaml"
     script:
@@ -76,8 +76,8 @@ rule spearman:
     input:
         rules.standardize.output,
     output:
-        signed="spearman-signed.feather",
-        abs="spearman-abs.feather"
+        signed="data/spearman-signed.feather",
+        abs="data/spearman-abs.feather"
     conda:
         "envs/all.yaml"
     script:
@@ -87,8 +87,8 @@ rule bicor_tom:
     input:
         rules.standardize.output,
     output:
-        signed = "bicor-tom-signed.feather",
-        abs = "bicor-tom-abs.feather"
+        signed = "data/bicor-tom-signed.feather",
+        abs = "data/bicor-tom-abs.feather"
     conda:
         "envs/all.yaml"
     threads:
@@ -104,7 +104,7 @@ rule ica:
     input:
         rules.standardize.output,
     output:
-        "ica_{components}comps_rep{rep}.csv"
+        "ica/ica_{components}comps_rep{rep}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -118,7 +118,7 @@ rule fdr_calc:
     input:
         rules.ica.output,
     output:
-        "ica_fdr{ICAver}_{components}comps_rep{rep}_qvalues.csv.gz"
+        "ica/ica_fdr{ICAver}_{components}comps_rep{rep}_qvalues.csv.gz"
     params:
         ICAver = lambda wc: wc.ICAver
     conda:
@@ -130,7 +130,7 @@ rule fdr_cut:
     input:
         rules.fdr_calc.output,
     output:
-        "ica_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval.json"
+        "modules/ica_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval.json"
     params:
         q = lambda wc: float(wc.fdr)
     conda:
@@ -144,9 +144,9 @@ rule fdr_cut:
 
 rule neighbors:
     input:
-        "{relation}.feather"
+        "data/{relation}.feather"
     output:
-        "neighbors_{relation}.json"
+        "data/neighbors_{relation}.json"
     conda:
         "envs/all.yaml"
     script:
@@ -157,7 +157,7 @@ rule igp:
         communities = rules.fdr_cut.output,
         nn = rules.neighbors.output,
     output:
-        "igp_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
+        "metrics/igp/igp_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -165,7 +165,7 @@ rule igp:
 
 rule plot_igp_maximization:
     input:
-        lambda wc: expand("igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
+        lambda wc: expand("metrics/igp/igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
     output:
         "igp.pdf"
     conda:
@@ -181,7 +181,7 @@ rule run_topgo:
     input:
         rules.fdr_calc.output
     output:
-        "enr_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
+        "metrics/enr/enr_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
     params:
         qval = lambda wc: wc.fdr,
         nodes = TOPGO_NODES,
@@ -192,7 +192,7 @@ rule run_topgo:
 
 rule plot_enr_maximization:
     input:
-        expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
+        expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
     output:
         "enr.pdf"
     conda:
@@ -207,9 +207,9 @@ rule plot_enr_maximization:
 rule mgc:
     input:
         communities = rules.fdr_cut.output,
-        corrmat = "{relation}.feather",
+        corrmat = "data/{relation}.feather",
     output:
-        "mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
+        "metrics/mgc/mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -217,7 +217,7 @@ rule mgc:
 
 rule plot_mgc_maximization:
     input:
-        expand("mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
+        expand("metrics/mgc/mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
     output:
         "mgc.pdf"
     conda:
