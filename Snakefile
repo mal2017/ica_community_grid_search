@@ -41,6 +41,10 @@ rule target:
         expand("enr_fdr{v}_{o}.pdf",o=ONTS,v=ICA_VERSIONS),
         expand("igp_fdr{v}.pdf",v=ICA_VERSIONS),
 
+# ------------------------------------------------------------------------------
+# pre-processing
+# ------------------------------------------------------------------------------
+
 rule standardize:
     input:
         DATA
@@ -50,6 +54,11 @@ rule standardize:
         "envs/all.yaml"
     script:
         "scripts/standardize.py"
+
+# ------------------------------------------------------------------------------
+# calculate correlations
+# ------------------------------------------------------------------------------
+
 
 rule pearson:
     input:
@@ -86,6 +95,10 @@ rule bicor_tom:
     script:
         "scripts/bicor_tom.R"
 
+# ------------------------------------------------------------------------------
+# ICA itself
+# ------------------------------------------------------------------------------
+
 rule ica:
     input:
         rules.standardize.output,
@@ -95,6 +108,10 @@ rule ica:
         "envs/all.yaml"
     script:
         "scripts/ica.py"
+
+# ------------------------------------------------------------------------------
+# fdr calcs and cutoffs
+# ------------------------------------------------------------------------------
 
 rule fdr_calc:
     input:
@@ -119,6 +136,10 @@ rule fdr_cut:
         "envs/all.yaml"
     script:
         "scripts/qval_cutoff_1d.R"
+
+# ------------------------------------------------------------------------------
+# in-group proportion metrics
+# ------------------------------------------------------------------------------
 
 rule neighbors:
     input:
@@ -151,6 +172,10 @@ rule plot_igp_maximization:
     script:
         "scripts/plot_igp.R"
 
+# ------------------------------------------------------------------------------
+# Enrichment metrics
+# ------------------------------------------------------------------------------
+
 rule run_topgo:
     input:
         rules.fdr_calc.output
@@ -173,3 +198,14 @@ rule plot_enr_maximization:
         "envs/all.yaml"
     script:
         "scripts/plot_enr.R"
+
+rule mgc:
+    input:
+        communities = rules.fdr_cut.output,
+        corrmat = "{relation}.feather",
+    output:
+        "mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/mgc.R"
