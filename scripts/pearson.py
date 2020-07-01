@@ -3,6 +3,7 @@ import numpy as np
 
 X = pd.read_feather(snakemake.input[0])
 X.set_index('index', inplace=True)
+X = X.T
 
 C = X.corr()
 Cabs = C.abs()

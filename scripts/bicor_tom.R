@@ -8,6 +8,8 @@ X <- read_feather(snakemake@input[[1]])
 
 X <- column_to_rownames(X,"index")
 
+X <- t(X) #reorient
+
 # testing
 #X <- X[,1:1000]
 #threads <- 4
