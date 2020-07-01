@@ -25,15 +25,21 @@ if config.get("is_test",False):
 RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
              "spearman-signed","pearson-signed","bicor-tom-signed"]
 
+RELATIONS = ["bicor-tom-abs","pearson-abs",
+             "bicor-tom-signed","pearson-signed"]
+
+
 ONTS = ["BP","MF","CC"]
+
+ICA_VERSIONS = [1,2]
 
 rule target:
     input:
-        expand("ica_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS),
-        expand("ica_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS),
-        expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS),
-        expand("enr_{o}.pdf",o=ONTS),
-        #"igp.pdf",
+        expand("ica_fdr{v}_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS,v=ICA_VERSIONS),
+        expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
+        expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
+        expand("enr_fdr{v}_{o}.pdf",o=ONTS,v=ICA_VERSIONS),
+        expand("igp_fdr{v}.pdf",v=ICA_VERSIONS),
 
 rule standardize:
     input:
@@ -94,7 +100,9 @@ rule fdr_calc:
     input:
         rules.ica.output,
     output:
-        "ica_{components}comps_rep{rep}_qvalues.csv.gz"
+        "ica_fdr{ICAver}_{components}comps_rep{rep}_qvalues.csv.gz"
+    params:
+        ICAver = lambda wc: wc.ICAver
     conda:
         "envs/all.yaml"
     script:
@@ -104,7 +112,7 @@ rule fdr_cut:
     input:
         rules.fdr_calc.output,
     output:
-        "ica_{components}comps_rep{rep}_{fdr}qval.json"
+        "ica_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval.json"
     params:
         q = lambda wc: float(wc.fdr)
     conda:
@@ -127,7 +135,7 @@ rule igp:
         communities = rules.fdr_cut.output,
         nn = rules.neighbors.output,
     output:
-        "igp_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
+        "igp_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -135,9 +143,9 @@ rule igp:
 
 rule plot_igp_maximization:
     input:
-        lambda wc: expand("igp_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS),
+        lambda wc: expand("igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=wc.ICAver),
     output:
-        "igp.pdf"
+        "igp_fdr{ICAver}.pdf"
     conda:
         "envs/all.yaml"
     script:
@@ -147,7 +155,7 @@ rule run_topgo:
     input:
         rules.fdr_calc.output
     output:
-        "enr_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
+        "enr_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
     params:
         qval = lambda wc: wc.fdr,
         nodes = TOPGO_NODES,
@@ -158,9 +166,9 @@ rule run_topgo:
 
 rule plot_enr_maximization:
     input:
-        lambda wc: expand("enr_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=wc.ont)
+        lambda wc: expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=wc.ont, v=wc.ICAver)
     output:
-        "enr_{ont}.pdf"
+        "enr_fdr{ICAver}_{ont}.pdf"
     conda:
         "envs/all.yaml"
     script:
