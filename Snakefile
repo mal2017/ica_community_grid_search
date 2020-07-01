@@ -39,7 +39,7 @@ rule target:
         expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
         expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
         expand("enr_fdr{v}_{o}.pdf",o=ONTS,v=ICA_VERSIONS),
-        expand("igp_fdr{v}.pdf",v=ICA_VERSIONS),
+        "igp.pdf"
 
 # ------------------------------------------------------------------------------
 # pre-processing
@@ -164,17 +164,14 @@ rule igp:
 
 rule plot_igp_maximization:
     input:
-        lambda wc: expand("igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=wc.ICAver),
+        lambda wc: expand("igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
     output:
-        "igp_fdr{ICAver}.pdf"
+        "igp.pdf"
     conda:
         "envs/all.yaml"
     script:
         "scripts/plot_igp.R"
 
-# ------------------------------------------------------------------------------
-# Enrichment metrics
-# ------------------------------------------------------------------------------
 
 rule run_topgo:
     input:
@@ -209,3 +206,13 @@ rule mgc:
         "envs/all.yaml"
     script:
         "scripts/mgc.R"
+
+#rule plot_mgc_maximization:
+#    input:
+#        expand("mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
+#    output:
+#        "mgc.pdf"
+#    conda:
+#        "envs/all.yaml"
+#    script:
+#        "scripts/plot_mgc.R"
