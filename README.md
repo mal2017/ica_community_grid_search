@@ -1,3 +1,14 @@
+
+## Data
+
+Feed depth normalized, logarithmized matrix in feather format. Samples x genes.
+
+```
+--config data=some/matrix.feather
+```
+
+## Get started
+
 ```
 snakemake --use-conda \
 	  --cores 999 \  
@@ -8,4 +19,10 @@ snakemake --use-conda \
 	  	--cpus-per-task={cluster.cpus}" \
 		-d ~/scratch/mal456/[something] \
 		--config data=some/matrix.feather
+```
+
+## Testing
+
+```
+--config is_test=True
 ```
