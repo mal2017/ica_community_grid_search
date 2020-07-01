@@ -16,11 +16,16 @@ df <- fls %>%
   dplyr::select(-file,-comps,-qval,-rep) %>%
   unnest(cols=c(df))
 
-g <- ggplot(df, aes(components, qval, fill=igp)) +
-	geom_tile() +
-	facet_grid(relation~ica) +
-	theme_minimal() +
-	scale_fill_viridis_c(option=3) +
-	theme(aspect.ratio=1)
+g <- df %>% 
+  group_by(ica,relation,qval,components,rep) %>%
+  summarize(igp=mean(igp)) %>%
+  group_by(ica,relation,qval,components) %>%
+  summarize(igp=mean(igp)) %>%
+  ggplot(aes(components, qval, fill=igp)) +
+	  geom_tile() +
+	  facet_grid(relation~ica) +
+	  theme_minimal() +
+	  scale_fill_viridis_c(option=3) +
+	  theme(aspect.ratio=1)
 
 ggsave(snakemake@output[[1]],g)
