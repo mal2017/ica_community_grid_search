@@ -13,7 +13,7 @@ fls <- tibble(file = fls) %>%
 
 
 df <- fls %>%
-  mutate(df = map(file,read_csv, col_types="cccddddd")) %>%
+  mutate(df = map(file,.f=function(x) read_csv(x,col_types="cccddddd") %>% group_by(cluster) %>% top_n(5,score)) %>%
   dplyr::select(-file) %>%
   unnest(cols=c(df))
 

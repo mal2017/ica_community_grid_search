@@ -22,11 +22,11 @@ if config.get("is_test",False):
     COMPONENTS = [20]
     QVALS = [0.01]
 
-RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
-             "spearman-signed","pearson-signed","bicor-tom-signed"]
+#RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
+#             "spearman-signed","pearson-signed","bicor-tom-signed"]
 
-RELATIONS = ["bicor-tom-abs","pearson-abs",
-             "bicor-tom-signed","pearson-signed"]
+RELATIONS = ["spearman-abs","pearson-abs",
+             "spearman-signed","pearson-signed"]
 
 
 ONTS = ["BP","MF","CC"]
