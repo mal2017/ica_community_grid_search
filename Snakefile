@@ -38,9 +38,9 @@ rule target:
         #expand("ica_fdr{v}_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS,v=ICA_VERSIONS),
         #expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
         #expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
-        "enr.pdf",
-        "igp.pdf",
-        "mgc.pdf"
+        #"igp.pdf",
+        "enr.pdf","enr.csv",
+        "mgc.pdf","mgc.csv",
 
 # ------------------------------------------------------------------------------
 # pre-processing
@@ -167,7 +167,8 @@ rule plot_igp_maximization:
     input:
         lambda wc: expand("metrics/igp/igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
     output:
-        "igp.pdf"
+        "igp.pdf",
+        "igp.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -194,7 +195,8 @@ rule plot_enr_maximization:
     input:
         expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
     output:
-        "enr.pdf"
+        "enr.pdf",
+        "enr.csv"
     conda:
         "envs/all.yaml"
     script:
@@ -219,7 +221,8 @@ rule plot_mgc_maximization:
     input:
         expand("metrics/mgc/mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
     output:
-        "mgc.pdf"
+        "mgc.pdf",
+        "mgc.csv"
     conda:
         "envs/all.yaml"
     script:
