@@ -202,6 +202,15 @@ rule plot_enr_maximization:
     script:
         "scripts/plot_enr.R"
 
+rule supp_enr_metrics:
+    input:
+      expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
+    output:
+      "supp-enr.csv"
+    script:
+      "scripts/gather_supp_enr_metrics.R"
+
+
 # ------------------------------------------------------------------------------
 # mean in-group correlation metrics
 # ------------------------------------------------------------------------------

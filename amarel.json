@@ -33,6 +33,11 @@
         "time" : "4:00:00",
         "mem" : 128000,      
     },
+    "supp_enr_metrics" :
+    {
+        "time" : "4:00:00",
+        "mem" : 128000,      
+    },
     "plot_igp_maximization" :
     {
         "time" : "4:00:00", 

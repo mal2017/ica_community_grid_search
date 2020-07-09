@@ -17,10 +17,11 @@ df <- fls %>%
   unnest(cols=c(df))
 
 df <- df %>% 
+  drop_na() %>%
   group_by(ica,relation,qval,components,rep) %>%
   summarize(mgc=mean(mgc)) %>%
   group_by(ica,relation,qval,components) %>%
-  summarize(mgc=mean(mgc)) %>% ungroup()
+  summarize(mgc=mean(mgc, na.rm=T)) %>% ungroup()
 
 g <- ggplot(df, aes(components, qval, fill=mgc, color=mgc)) +
   geom_tile() +
