@@ -1,4 +1,7 @@
-#random_seed = config.get("seed", 2020)
+import random
+
+RANDOM_SEED = config.get("RANDOM_SEED",2020)
+random.seed(RANDOM_SEED)
 
 DATA = config.get("data",None)
 
@@ -10,108 +13,75 @@ MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
 STEP_QVAL = int(config.get("step_qval", 0.005) * 1000)
 
 MIN_COMPS = config.get("min_comps",50)
-MAX_COMPS = config.get("max_comps",500) + 1
-STEP_COMPS = config.get("step_comps", 10)
+MAX_COMPS = config.get("max_comps",300) + 1
+STEP_COMPS = config.get("step_comps", 25)
 
-REPS = range(1,config.get("reps",1) + 1,1)
+REPS = range(1,config.get("reps",3) + 1,1)
 
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
-if config.get("is_test",False):
-    REPS = [1]
-    COMPONENTS = [20]
-    QVALS = [0.01]
+INDIV_RANDOM_SEEDS_ICA = random.sample(range(0,100000,1),k=max(REPS))
+OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",1)
+OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1)
 
-#RELATIONS = ["spearman-abs","pearson-abs","bicor-tom-abs",
-#             "spearman-signed","pearson-signed","bicor-tom-signed"]
+if config.get("is_test",False):
+    REPS = [1,2,3]
+    COMPONENTS = [10,20,30]
+    QVALS = [0.001,0.005,0.01,0.05]
 
 RELATIONS = ["spearman-abs","pearson-abs",
              "spearman-signed","pearson-signed"]
 
+ONT = "BP"
 
-ONTS = ["BP","MF","CC"]
-
-ICA_VERSIONS = [1,2]
+ICA_VERSION = 1
 
 rule target:
     input:
         #expand("ica_fdr{v}_{c}comps_rep{rep}_qvalues.csv.gz",c=COMPONENTS,rep=REPS,v=ICA_VERSIONS),
         #expand("ica_fdr{v}_{c}comps_rep{rep}_{q}qval.json", c=COMPONENTS, q=QVALS, rep=REPS,v=ICA_VERSIONS),
         #expand("enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS,v=ICA_VERSIONS),
-        #"igp.pdf",
-        "enr.pdf","enr.csv",
-        "mgc.pdf","mgc.csv",
-
-# ------------------------------------------------------------------------------
-# pre-processing
-# ------------------------------------------------------------------------------
-
-rule standardize:
-    input:
-        DATA
-    output:
-        "data/standardized.feather"
-    params:
-        maxval = MAX_Z
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/standardize.py"
-
-# ------------------------------------------------------------------------------
-# calculate correlations
-# ------------------------------------------------------------------------------
-
-
-rule pearson:
-    input:
-        rules.standardize.output,
-    output:
-        signed = "data/pearson-signed.feather",
-        abs = "data/pearson-abs.feather"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/pearson.py"
-
-rule spearman:
-    input:
-        rules.standardize.output,
-    output:
-        signed="data/spearman-signed.feather",
-        abs="data/spearman-abs.feather"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/spearman.py"
-
-rule bicor_tom:
-    input:
-        rules.standardize.output,
-    output:
-        signed = "data/bicor-tom-signed.feather",
-        abs = "data/bicor-tom-abs.feather"
-    conda:
-        "envs/all.yaml"
-    threads:
-        4
-    script:
-        "scripts/bicor_tom.R"
+        expand("ica/{c}/{r}/source.csv.gz",c=COMPONENTS, r=REPS),
+        expand("ica/{c}/consensus-mixing.csv.gz", c=COMPONENTS),
+        expand("ica/{c}/consensus-source.qvalues.csv.gz",c=COMPONENTS),
+        expand("enr/{k}/{fdr}/enr.csv",k=COMPONENTS, fdr = QVALS)
+        #"enr.csv",
 
 # ------------------------------------------------------------------------------
 # ICA itself
 # ------------------------------------------------------------------------------
 
-rule ica:
+rule ica_reps:
     input:
-        rules.standardize.output,
+        DATA
     output:
-        "ica/ica_{components}comps_rep{rep}.csv"
+        source = "ica/{k}/{rep}/source.csv.gz",
+        mixing = "ica/{k}/{rep}/mixing.csv.gz",
+    params:
+        random_seed = lambda wc: INDIV_RANDOM_SEEDS_ICA[int(wc.rep)-1],
+        comps = lambda wc: int(wc.k)
     conda:
         "envs/all.yaml"
     script:
         "scripts/ica.py"
+
+rule ica_consensus:
+    input:
+        source= lambda wc: expand("ica/{k}/{rep}/source.csv.gz",k=wc.k,rep=range(1,max(REPS)+1,1)),
+        mixing= lambda wc: expand("ica/{k}/{rep}/mixing.csv.gz",k=wc.k, rep=range(1,max(REPS)+1,1)),
+    output:
+        mixing="ica/{k}/consensus-mixing.csv.gz",
+        source="ica/{k}/consensus-source.csv.gz",
+        dists = "ica/{k}/component-dists.csv.gz"
+    params:
+        knn = OUTLIER_FILT_KNN_ICA,
+        max_dist = OUTLIER_MAX_DIST_ICA,
+        k = lambda wc: int(wc.k)
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/ica-consensus.R"
 
 # ------------------------------------------------------------------------------
 # fdr calcs and cutoffs
@@ -119,63 +89,15 @@ rule ica:
 
 rule fdr_calc:
     input:
-        rules.ica.output,
+        rules.ica_consensus.output.source,
     output:
-        "ica/ica_fdr{ICAver}_{components}comps_rep{rep}_qvalues.csv.gz"
+        "ica/{k}/consensus-source.qvalues.csv.gz"
     params:
-        ICAver = lambda wc: wc.ICAver
+        ICAver = ICA_VERSION
     conda:
         "envs/all.yaml"
     script:
         "scripts/qval_calc.R"
-
-rule fdr_cut:
-    input:
-        rules.fdr_calc.output,
-    output:
-        "modules/ica_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval.json"
-    params:
-        q = lambda wc: float(wc.fdr)
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/qval_cutoff_1d.R"
-
-# ------------------------------------------------------------------------------
-# in-group proportion metrics
-# ------------------------------------------------------------------------------
-
-rule neighbors:
-    input:
-        "data/{relation}.feather"
-    output:
-        "data/neighbors_{relation}.json"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/neighbors_correlation.R"
-
-rule igp:
-    input:
-        communities = rules.fdr_cut.output,
-        nn = rules.neighbors.output,
-    output:
-        "metrics/igp/igp_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/igp.R"
-
-rule plot_igp_maximization:
-    input:
-        lambda wc: expand("metrics/igp/igp_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
-    output:
-        "igp.pdf",
-        "igp.csv"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/plot_igp.R"
 
 # ------------------------------------------------------------------------------
 # enrichment
@@ -185,57 +107,58 @@ rule run_topgo:
     input:
         rules.fdr_calc.output
     output:
-        "metrics/enr/enr_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{ont}.csv"
+        "enr/{k}/{fdr}/enr.csv"
     params:
         qval = lambda wc: wc.fdr,
         nodes = TOPGO_NODES,
+        ont = ONT
     #conda:
     #    "envs/topgo.yaml"
     script:
         "scripts/go_enr.R"
-
-rule plot_enr_maximization:
-    input:
-        expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
-    output:
-        "enr.pdf",
-        "enr.csv"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/plot_enr.R"
-
-rule supp_enr_metrics:
-    input:
-      expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
-    output:
-      "supp-enr.csv"
-    script:
-      "scripts/gather_supp_enr_metrics.R"
-
-
-# ------------------------------------------------------------------------------
-# mean in-group correlation metrics
-# ------------------------------------------------------------------------------
-
-rule mgc:
-    input:
-        communities = rules.fdr_cut.output,
-        corrmat = "data/{relation}.feather",
-    output:
-        "metrics/mgc/mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/mgc.R"
-
-rule plot_mgc_maximization:
-    input:
-        expand("metrics/mgc/mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
-    output:
-        "mgc.pdf",
-        "mgc.csv"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/plot_mgc.R"
+#
+# rule plot_enr_maximization:
+#     input:
+#         expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
+#     output:
+#         "enr.pdf",
+#         "enr.csv"
+#     conda:
+#         "envs/all.yaml"
+#     script:
+#         "scripts/plot_enr.R"
+#
+# rule supp_enr_metrics:
+#     input:
+#       expand("metrics/enr/enr_fdr{v}_{c}comps_rep{r}_{f}qval_{o}.csv",c=COMPONENTS,r=REPS,f=QVALS,o=ONTS, v=ICA_VERSIONS)
+#     output:
+#       "supp-enr.csv"
+#     script:
+#       "scripts/gather_supp_enr_metrics.R"
+#
+#
+# # ------------------------------------------------------------------------------
+# # mean in-group correlation metrics
+# # ------------------------------------------------------------------------------
+#
+# rule mgc:
+#     input:
+#         communities = rules.fdr_cut.output,
+#         corrmat = "data/{relation}.feather",
+#     output:
+#         "metrics/mgc/mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
+#     conda:
+#         "envs/all.yaml"
+#     script:
+#         "scripts/mgc.R"
+#
+# rule plot_mgc_maximization:
+#     input:
+#         expand("metrics/mgc/mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
+#     output:
+#         "mgc.pdf",
+#         "mgc.csv"
+#     conda:
+#         "envs/all.yaml"
+#     script:
+#         "scripts/plot_mgc.R"

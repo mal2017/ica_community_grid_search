@@ -1,10 +1,10 @@
 
 ## Data
 
-Feed depth normalized, logarithmized matrix in feather format. Samples x genes.
+Feed depth normalized, logarithmized matrix in csv format. Genes x samples.
 
 ```
---config data=some/matrix.feather
+--config data=some/matrix.csv.gz
 ```
 
 ## Get started
@@ -18,7 +18,7 @@ snakemake --use-conda \
 		 	--mem {cluster.mem} \
 	  	--cpus-per-task={cluster.cpus}" \
 		-d ~/scratch/mal456/[something] \
-		--config data=some/matrix.feather
+		--config data=some/matrix.csv.gz
 ```
 
 ## Testing

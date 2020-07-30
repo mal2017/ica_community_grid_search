@@ -10,7 +10,7 @@
         "mem" : 12000,
         "export" : "ALL"
     },
-    "ica" :
+    "ica_reps" :
     {
         "time" : "8:00:00",
         "mem" : 32000,
@@ -22,26 +22,26 @@
     },
     "run_topgo" :
     {
-        "time" : "6:00:00",      
+        "time" : "6:00:00",
     },
     "igp" :
     {
-        "time" : "8:00:00",      
+        "time" : "8:00:00",
     },
     "plot_enr_maximization" :
     {
         "time" : "4:00:00",
-        "mem" : 128000,      
+        "mem" : 128000,
     },
     "supp_enr_metrics" :
     {
         "time" : "4:00:00",
-        "mem" : 128000,      
+        "mem" : 128000,
     },
     "plot_igp_maximization" :
     {
-        "time" : "4:00:00", 
-        "mem" : 64000,           
+        "time" : "4:00:00",
+        "mem" : 64000,
     },
     "pearson" :
     {

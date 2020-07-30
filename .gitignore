@@ -2,3 +2,6 @@ test/
 .snakemake
 .Rproj.user
 *~
+*feather
+*csv
+*csv.gz

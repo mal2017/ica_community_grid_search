@@ -6,7 +6,7 @@ library(org.Dm.eg.db)
 qval_df <- read_csv(snakemake@input[[1]])
 ofl <- snakemake@output[[1]]
 qval <- snakemake@params[["qval"]]
-ont <- snakemake@wildcards[["ont"]]
+ont <- snakemake@params[["ont"]]
 nodes <- snakemake@params[["nodes"]]
 
 # http://avrilomics.blogspot.com/2015/07/using-topgo-to-test-for-go-term.html
