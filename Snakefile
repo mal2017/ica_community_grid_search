@@ -24,12 +24,12 @@ QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
 INDIV_RANDOM_SEEDS_ICA = [random.sample(range(0,100000,1),k=max(REPS)) for x in OVERALL_REPS]
 OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",1)
-OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1)
+OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1300)
 
 if config.get("is_test",False):
-    REPS = [1,2,3]
-    OVERALL_REPS = [1,2,3]
-    COMPONENTS = [10,20,30]
+    REPS = [1,2]
+    OVERALL_REPS = [1,2]
+    COMPONENTS = [10]
     QVALS = [0.001,0.005,0.01,0.05]
 
 RELATIONS = ["spearman-abs","pearson-abs",
@@ -44,10 +44,15 @@ print(INDIV_RANDOM_SEEDS_ICA)
 rule target:
     input:
         expand("ica/{c}/{ovr}/{r}/source.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
-        expand("ica/{c}/{ovr}/consensus-mixing.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
-        expand("ica/{c}/{ovr}/consensus-source.qvalues.csv.gz",c=COMPONENTS, ovr=OVERALL_REPS),
+        expand("ica/{c}/{ovr}/{r}/mixing.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
+
+        expand("ica/{c}/{ovr}/consensus-ica.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
+        expand("ica/{c}/{ovr}/consensus-usage.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
+        expand("ica/{c}/{ovr}/consensus-ica.qvalues.csv.gz",c=COMPONENTS, ovr=OVERALL_REPS),
         expand("enr/{c}/{ovr}/{fdr}/enr.csv",c=COMPONENTS, ovr=OVERALL_REPS, fdr = QVALS),
-        "enr.csv",
+        "enr/enr.csv",
+        "ica/silhouette.csv"
+        #"metrics.csv"
 
 # ------------------------------------------------------------------------------
 # ICA itself
@@ -72,13 +77,14 @@ rule ica_consensus:
         source= lambda wc: expand("ica/{k}/{ovr}/{rep}/source.csv.gz",k=wc.k,ovr = wc.ovr, rep=range(1,max(REPS)+1,1)),
         mixing= lambda wc: expand("ica/{k}/{ovr}/{rep}/mixing.csv.gz",k=wc.k, ovr = wc.ovr, rep=range(1,max(REPS)+1,1)),
     output:
-        mixing="ica/{k}/{ovr}/consensus-mixing.csv.gz",
-        source="ica/{k}/{ovr}/consensus-source.csv.gz",
-        dists = "ica/{k}/{ovr}/component-dists.csv.gz"
+        usage="ica/{k}/{ovr}/consensus-usage.csv.gz",
+        ica="ica/{k}/{ovr}/consensus-ica.csv.gz",
+        dists = "ica/{k}/{ovr}/consensus-dists.csv.gz",
+        silhouette = "ica/{k}/{ovr}/consensus-silhouette.csv.gz",
     params:
         knn = OUTLIER_FILT_KNN_ICA,
         max_dist = OUTLIER_MAX_DIST_ICA,
-        k = lambda wc: int(wc.k)
+        k = lambda wc: wc.k
     conda:
         "envs/all.yaml"
     script:
@@ -90,9 +96,9 @@ rule ica_consensus:
 #
 rule fdr_calc:
     input:
-        rules.ica_consensus.output.source,
+        rules.ica_consensus.output.ica,
     output:
-        "ica/{k}/{ovr}/consensus-source.qvalues.csv.gz"
+        "ica/{k}/{ovr}/consensus-ica.qvalues.csv.gz"
     params:
         ICAver = ICA_VERSION
     conda:
@@ -122,43 +128,28 @@ rule combine_reps_enr:
     input:
         expand("enr/{k}/{ovr}/{fdr}/enr.csv",k=COMPONENTS,ovr=OVERALL_REPS,fdr=QVALS)
     output:
-        csv="enr.csv"
+        csv="enr/enr.csv"
     conda:
         "envs/all.yaml"
     script:
         "scripts/plot_enr.R"
 
-rule supp_enr_metrics:
+rule combine_metrics:
     input:
-      "enr.csv"
+      rules.combine_reps_enr.output
     output:
-      "supp-enr.csv"
+      "metrics.csv"
+    conda:
+        "envs/all.yaml"
     script:
       "scripts/gather_supp_enr_metrics.R"
-#
-#
-# # ------------------------------------------------------------------------------
-# # mean in-group correlation metrics
-# # ------------------------------------------------------------------------------
-#
-# rule mgc:
-#     input:
-#         communities = rules.fdr_cut.output,
-#         corrmat = "data/{relation}.feather",
-#     output:
-#         "metrics/mgc/mgc_fdr{ICAver}_{components}comps_rep{rep}_{fdr}qval_{relation}.csv"
-#     conda:
-#         "envs/all.yaml"
-#     script:
-#         "scripts/mgc.R"
-#
-# rule plot_mgc_maximization:
-#     input:
-#         expand("metrics/mgc/mgc_fdr{v}_{c}comps_rep{rep}_{q}qval_{r}.csv", c=COMPONENTS, q=QVALS, r=RELATIONS, rep=REPS, v=ICA_VERSIONS),
-#     output:
-#         "mgc.pdf",
-#         "mgc.csv"
-#     conda:
-#         "envs/all.yaml"
-#     script:
-#         "scripts/plot_mgc.R"
+
+rule combine_silhouette:
+    input:
+        expand("ica/{k}/{ovr}/consensus-silhouette.csv.gz",k=COMPONENTS,ovr=OVERALL_REPS)
+    output:
+        sil = "ica/silhouette.csv"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/gather_silhouette.R"

@@ -1,6 +1,6 @@
 library(tidyverse)
 library(pheatmap)
-library(HiClimR)
+library(cluster)
 
 options(stringsAsFactors = F)
 
@@ -10,23 +10,27 @@ knn <- as.numeric(snakemake@params[['knn']])
 max_dist <- as.numeric(snakemake@params[['max_dist']])
 k <- as.numeric(snakemake@params[['k']])
 
-df <- snakemake@input[['source']] %>%
-  set_names(.,str_extract(.,"(?<=reps\\/)\\d{1,3}(?=\\/mixing)")) %>%
-  map_df(., read_csv,.id = "rep") #%>%
-  #dplyr::rename(index=X1)
+src_fls <- snakemake@input[['mixing']]
+#src_fls <- Sys.glob("test/ica/10/1/*/mixing.csv.gz")
 
-usage <- snakemake@input[['mixing']] %>%
-  set_names(.,str_extract(.,"(?<=reps\\/)\\d{1,3}(?=\\/usage)")) %>%
+usage_fls <- snakemake@input[['source']]
+#usage_fls <- Sys.glob("test/ica/10/1/*/source.csv.gz")
+
+df <- src_fls %>%
+  set_names(.,str_extract(.,"(?<=\\/)\\d+(?=\\/mixing)")) %>%
+  map_df(., read_csv,.id = "rep") %>%
+  #dplyr::rename(index=X1) %>%
+  gather(module,score,-rep,-index)
+
+usage <- usage_fls %>%
+  set_names(.,str_extract(.,"(?<=\\/)\\d{1,3}(?=\\/source)")) %>%
   map_df(.,read_csv,.id='rep') %>%
-  gather(module,usage,-X1,-rep) #%>%
-  #dplyr::rename(X1=index)
+  gather(module,usage,-X1,-rep)
 
 aligner <- usage %>%
   group_by(rep,module) %>%
   summarize(aligner=-1*sign(median(usage))) %>%
   tidyr::unite(module, rep,module)
-
-df <- gather(df,module,score,-rep,-index)
 
 df <- pivot_wider(df,names_from = c(rep,module),values_from = score)
 
@@ -38,8 +42,7 @@ df <- gather(df,module,score,-index) %>%
 
 mat <- t(column_to_rownames(df,'index'))
 
-
-mat.dist <- {1 - HiClimR::fastCor(t(mat),optBLAS = T, verbose = T)}
+mat.dist <- as.matrix(dist(mat))
 
 mat.dist.df <- mat.dist %>%
   as_tibble(rownames = 'comp1') %>%
@@ -61,6 +64,10 @@ df2 <- gather(df, cluster,score,-index)
 
 km_df <- km$cluster %>% enframe(name = 'cluster',value = 'cons')
 
+sil <- cluster::silhouette(km$cluster,mat.dist)
+
+sil_df <- as_tibble(sil[,1:3])
+
 df2 <- df2 %>%
   left_join(km_df, by="cluster")
 
@@ -70,8 +77,7 @@ df2 <- df2 %>%
   summarize(score=median(score))
 
 # export
-
-df2 %>% spread(cons,score) %>% write_csv(snakemake@output[['source']])
+df2 %>% spread(cons,score) %>% write_csv(snakemake@output[['ica']])
 
 # df2 %>% group_by(cons) %>%
 #  mutate(l1norm = norm(as.matrix(unlist(score)),type = "1")) %>%
@@ -87,6 +93,8 @@ usage2 <- unite(usage,cluster,rep,module) %>%
   group_by(cons,X1) %>%
   summarize(usage=median(usage))
 
-write_csv(usage2, snakemake@output[['mixing']])
+write_csv(usage2, snakemake@output[['usage']])
 
 write_csv(mat.dist.df, snakemake@output[['dists']])
+
+write_csv(sil_df, snakemake@output[['silhouette']])

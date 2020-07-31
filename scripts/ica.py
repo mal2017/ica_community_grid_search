@@ -9,6 +9,7 @@ np.random.seed(seed)
 
 X = pd.read_csv(snakemake.input[0])
 X.set_index('index',inplace=True)
+X = X.T
 ica = FastICA(n_components=int(snakemake.params['comps']), random_state=seed, max_iter=1000)
 source = ica.fit_transform(X)
 
