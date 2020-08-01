@@ -1,3 +1,4 @@
+#container: "docker://bioconductor/bioconductor_docker:RELEASE_3_11"
 import random
 
 RANDOM_SEED = config.get("RANDOM_SEED",2020)
@@ -7,35 +8,31 @@ DATA = config.get("data",None)
 
 TOPGO_NODES = config.get("topgo_nodes",100)
 
-MAX_Z = config.get("max_z", None)
 MIN_QVAL = int(config.get("min_qval",0.005) * 1000)
 MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
-STEP_QVAL = int(config.get("step_qval", 0.005) * 1000)
+STEP_QVAL = int(config.get("step_qval", 0.01) * 1000)
 
-MIN_COMPS = config.get("min_comps",50)
+MIN_COMPS = config.get("min_comps",20)
 MAX_COMPS = config.get("max_comps",300) + 1
-STEP_COMPS = config.get("step_comps", 25)
+STEP_COMPS = config.get("step_comps", 10)
 
-REPS = range(1,config.get("reps",3) + 1,1)
+REPS = range(1,config.get("reps",10) + 1,1)
 OVERALL_REPS = range(1,config.get("overall_reps",3) + 1,1)
 
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
 QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
 
+if config.get("is_test",False):
+    REPS = [1,2]
+    OVERALL_REPS = [1,2]
+    COMPONENTS = [12,14,16,18]
+    QVALS = [0.005,0.01,0.05]
+
 INDIV_RANDOM_SEEDS_ICA = [random.sample(range(0,100000,1),k=max(REPS)) for x in OVERALL_REPS]
 OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",1)
 OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1300)
 
-if config.get("is_test",False):
-    REPS = [1,2]
-    OVERALL_REPS = [1,2]
-    COMPONENTS = [10]
-    QVALS = [0.001,0.005,0.01,0.05]
-
-RELATIONS = ["spearman-abs","pearson-abs",
-             "spearman-signed","pearson-signed"]
-
-ONT = "BP"
+ONT = "CC"
 
 ICA_VERSION = 1
 
@@ -43,15 +40,15 @@ print(INDIV_RANDOM_SEEDS_ICA)
 
 rule target:
     input:
-        expand("ica/{c}/{ovr}/{r}/source.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
-        expand("ica/{c}/{ovr}/{r}/mixing.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
-
-        expand("ica/{c}/{ovr}/consensus-ica.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
-        expand("ica/{c}/{ovr}/consensus-usage.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
+        #expand("ica/{c}/{ovr}/{r}/source.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
+        #expand("ica/{c}/{ovr}/{r}/mixing.csv.gz",c=COMPONENTS, ovr = OVERALL_REPS, r=REPS),
+        #expand("ica/{c}/{ovr}/consensus-ica.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
+        #expand("ica/{c}/{ovr}/consensus-usage.csv.gz", c=COMPONENTS, ovr=OVERALL_REPS),
         expand("ica/{c}/{ovr}/consensus-ica.qvalues.csv.gz",c=COMPONENTS, ovr=OVERALL_REPS),
         expand("enr/{c}/{ovr}/{fdr}/enr.csv",c=COMPONENTS, ovr=OVERALL_REPS, fdr = QVALS),
         "enr/enr.csv",
-        "ica/silhouette.csv"
+        "enr/enr-metrics.csv",
+        "ica/silhouette.csv",
         #"metrics.csv"
 
 # ------------------------------------------------------------------------------
@@ -120,7 +117,7 @@ rule run_topgo:
         nodes = TOPGO_NODES,
         ont = ONT
     #conda:
-    #    "envs/topgo.yaml"
+        #"envs/topgo.yaml"
     script:
         "scripts/go_enr.R"
 
@@ -134,13 +131,13 @@ rule combine_reps_enr:
     script:
         "scripts/plot_enr.R"
 
-rule combine_metrics:
+rule combine_enr_metrics:
     input:
       rules.combine_reps_enr.output
     output:
-      "metrics.csv"
-    conda:
-        "envs/all.yaml"
+      "enr/enr-metrics.csv"
+    #conda:
+        #"envs/topgo.yaml"
     script:
       "scripts/gather_supp_enr_metrics.R"
 
@@ -153,3 +150,5 @@ rule combine_silhouette:
         "envs/all.yaml"
     script:
         "scripts/gather_silhouette.R"
+
+rule reconstruct:

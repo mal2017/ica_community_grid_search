@@ -1,5 +1,4 @@
 library(tidyverse)
-library(pheatmap)
 library(cluster)
 
 options(stringsAsFactors = F)
