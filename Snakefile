@@ -13,7 +13,7 @@ MAX_QVAL = config.get("max_qval",0.1)
 STEP_QVAL = config.get("step_qval", 2)
 
 MIN_COMPS = config.get("min_comps",20)
-MAX_COMPS = config.get("max_comps",300) + 1
+MAX_COMPS = config.get("max_comps",200) + 1
 STEP_COMPS = config.get("step_comps", 10)
 
 REPS = range(1,config.get("reps",50) + 1,1)
