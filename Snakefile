@@ -8,19 +8,21 @@ DATA = config.get("data",None)
 
 TOPGO_NODES = config.get("topgo_nodes",100)
 
-MIN_QVAL = int(config.get("min_qval",0.005) * 1000)
-MAX_QVAL = int(config.get("max_qval",0.1) * 1000)
-STEP_QVAL = int(config.get("step_qval", 0.01) * 1000)
+MIN_QVAL = config.get("min_qval",0.005)
+MAX_QVAL = config.get("max_qval",0.1)
+STEP_QVAL = config.get("step_qval", 2)
 
 MIN_COMPS = config.get("min_comps",20)
 MAX_COMPS = config.get("max_comps",300) + 1
 STEP_COMPS = config.get("step_comps", 10)
 
-REPS = range(1,config.get("reps",10) + 1,1)
+REPS = range(1,config.get("reps",50) + 1,1)
 OVERALL_REPS = range(1,config.get("overall_reps",2) + 1,1)
 
 COMPONENTS = range(MIN_COMPS,MAX_COMPS,STEP_COMPS)
-QVALS = [x / 1000.0 for x in range(MIN_QVAL,MAX_QVAL, STEP_QVAL)]
+QVALS = [MIN_QVAL]
+while QVALS[-1] < MAX_QVAL:
+    QVALS.append(QVALS[-1] * STEP_QVAL)
 
 if config.get("is_test",False):
     REPS = [1,2,3,4,5]
@@ -50,7 +52,6 @@ rule target:
         "enr/enr-metrics.csv",
         "ica/silhouette.csv",
         "report.html"
-        #"metrics.csv"
 
 # ------------------------------------------------------------------------------
 # ICA itself
