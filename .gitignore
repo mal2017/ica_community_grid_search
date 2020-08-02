@@ -5,3 +5,5 @@ test/
 *feather
 *csv
 *csv.gz
+*html
+*/report_files/

@@ -1,0 +1,144 @@
+---
+title: "Component Optimization"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    self_contained: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=F, warning = F)
+```
+
+```{r load-pkgs}
+library(tidyverse)
+```
+
+```{r load-metrics}
+enr.supp <- read_csv(snakemake@input[['enr_supp']])
+#enr.supp <- read_csv("~/work/ica_community_grid_search/test/enr/enr-metrics.csv")
+
+enr <- read_csv(snakemake@input[['enr']])
+#enr <- read_csv("~/work/ica_community_grid_search/test/enr/enr.csv")
+
+sil <- read_csv(snakemake@input[['sil']])
+#sil <- read_csv("~/work/ica_community_grid_search/test/ica/silhouette.csv")
+```
+
+```{r organize-inputs}
+enr.supp <- enr.supp %>%
+  mutate_at(vars('cov','pct_unique_term','pct_enr'), scales::rescale) %>%
+  mutate(score = cov * pct_unique_term)
+
+enr <- enr %>%
+  filter(Significant > 2)
+```
+
+## Silhouette
+
+```{r}
+ggplot(sil) +
+  stat_summary(aes(comps,silhouette), geom='line', color='red', linetype='dotted') +
+  stat_summary(aes(comps,silhouette, color=silhouette)) +
+  theme_classic() +
+  xlab("k") +
+  theme(aspect.ratio = 0.5)
+```
+
+## Unique enrichment x Coverage
+
+```{r}
+enr.supp %>%
+  gather(metric, value, -rep:-comps) %>%
+  filter(metric %in% c("cov","pct_unique_term")) %>%
+ggplot() +
+  geom_smooth(aes(comps, value, color=metric)) +
+  facet_wrap(~rep) +
+  theme_classic() +
+  scale_color_viridis_d(direction=-1) +
+  theme(aspect.ratio = 0.5)
+```
+
+
+```{r}
+ggplot(enr.supp,aes(as.factor(comps),as.factor(qval),fill=score)) +
+  geom_tile() +
+  theme_minimal() +
+  xlab("k") + ylab("qval") +
+  scale_fill_viridis_c() +
+  theme(aspect.ratio = 1)
+```
+
+```{r}
+optimal <- enr.supp %>% arrange(desc(score)) %>% head(1) %>% dplyr::select(qval,comps) %>%
+  gather(metric,value) %>%
+  deframe()
+```
+
+The optimal `k` is `r optimal[['comps']]` and optimal q value cutoff is `r optimal[['qval']]`.
+
+### Module sizes
+
+```{r}
+fls <- Sys.glob(paste0("../test/ica/",optimal['comps'],"/*/consensus-ica.qvalues.csv.gz"))
+tst <- map_df(fls,read_csv, .id = 'rep')
+
+tst %>% filter(qval < optimal['qval']) %>% group_by(module,rep) %>% tally() %>%
+  ggplot(aes(n)) +
+  geom_histogram(aes(fill=..count..), color='black') +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +
+  facet_wrap(~rep) +
+  scale_fill_fermenter(direction = 1, palette = 13) +
+  theme(aspect.ratio = 0.5)
+```
+
+### TE counts in enriched modules
+
+```{r}
+top_te <- tst %>% 
+  filter(qval < optimal['qval']) %>%
+  group_by(module, rep) %>%
+  summarize(n_te = sum(!str_detect(X1,"FBgn"))) %>%
+  arrange(desc(n_te)) %>%
+  split(.,.$rep) %>% map(pull,module)
+
+map(top_te,~head(.,3)) %>%
+  imap_dfr(~filter(tst, module %in% .x & rep == .y)) %>%
+  filter(qval < optimal['qval']) %>%
+  group_by(rep,module) %>%
+  summarize(n.te = sum(!str_detect(X1,"FBgn")), 
+            n.gene = sum(str_detect(X1,"FBgn"))) %>%
+  gather(feature, n, -rep,-module) %>%
+  ggplot(aes(as.factor(module),n, fill=feature)) +
+  geom_col() +
+  facet_wrap(~rep, scales='free') +
+  theme_classic() +
+  xlab("module") +
+  scale_fill_brewer(palette = 7) +
+  scale_y_continuous(expand=c(0,0)) +
+  theme(aspect.ratio = 1)
+```
+
+
+### TE module enrichment in optimal choice
+
+```{r fig.width=10}
+
+map(top_te,~head(.,2)) %>%
+  imap_dfr(~filter(enr, cluster %in% .x & rep == .y)) %>%
+  filter(comps == optimal['comps']) %>%
+  filter(qval == optimal['qval']) %>%
+  group_by(rep, cluster) %>%
+  top_n(10,score) %>%
+  ggplot(aes(reorder(Term,score),score)) +
+  facet_wrap(rep~cluster, scales = 'free') +
+  geom_col(aes(fill=as.factor(rep):as.factor(cluster)), color='black') +
+  coord_flip() +
+  theme_classic() +
+  scale_fill_brewer(type = 'qual') +
+  theme(aspect.ratio = 1)
+```
+
+
