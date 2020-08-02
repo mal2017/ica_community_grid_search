@@ -34,7 +34,7 @@ INDIV_RANDOM_SEEDS_ICA = [random.sample(range(0,100000,1),k=max(REPS)) for x in 
 OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",1)
 OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1300)
 
-ONT = "CC"
+ONT = "BP"
 
 ICA_VERSION = 1
 
