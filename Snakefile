@@ -8,12 +8,12 @@ DATA = config.get("data",None)
 
 TOPGO_NODES = config.get("topgo_nodes",100)
 
-MIN_QVAL = config.get("min_qval",0.0005)
+MIN_QVAL = config.get("min_qval",0.005)
 MAX_QVAL = config.get("max_qval",0.1)
 STEP_QVAL = config.get("step_qval", 2)
 
 MIN_COMPS = config.get("min_comps",20)
-MAX_COMPS = config.get("max_comps",200) + 1
+MAX_COMPS = config.get("max_comps",170) + 1
 STEP_COMPS = config.get("step_comps", 10)
 
 REPS = range(1,config.get("reps",50) + 1,1)
@@ -24,8 +24,8 @@ QVALS = [MIN_QVAL]
 while QVALS[-1] < MAX_QVAL:
     QVALS.append(QVALS[-1] * STEP_QVAL)
 
-OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",5)
-OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",7)
+OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",10)
+OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",200)
 
 ONT = "BP"
 
