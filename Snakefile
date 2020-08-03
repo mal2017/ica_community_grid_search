@@ -8,7 +8,7 @@ DATA = config.get("data",None)
 
 TOPGO_NODES = config.get("topgo_nodes",100)
 
-MIN_QVAL = config.get("min_qval",0.005)
+MIN_QVAL = config.get("min_qval",0.0005)
 MAX_QVAL = config.get("max_qval",0.1)
 STEP_QVAL = config.get("step_qval", 2)
 
@@ -24,21 +24,23 @@ QVALS = [MIN_QVAL]
 while QVALS[-1] < MAX_QVAL:
     QVALS.append(QVALS[-1] * STEP_QVAL)
 
-if config.get("is_test",False):
-    REPS = [1,2,3,4,5]
-    OVERALL_REPS = [1,2]
-    COMPONENTS = [5,10,15,20,140]
-    QVALS = [0.005,0.01,0.05,0.1]
-
-INDIV_RANDOM_SEEDS_ICA = [random.sample(range(0,100000,1),k=max(REPS)) for x in OVERALL_REPS]
-OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",1)
-OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",1300)
+OUTLIER_FILT_KNN_ICA = config.get("OUTLIER_FILT_KNN_ICA",5)
+OUTLIER_MAX_DIST_ICA = config.get("OUTLIER_MAX_DIST_ICA",7)
 
 ONT = "BP"
 
 ICA_VERSION = 1
 
-print(INDIV_RANDOM_SEEDS_ICA)
+if config.get("is_test",False):
+    REPS = [1,2,3]
+    OVERALL_REPS = [1,2]
+    COMPONENTS = [5,10,15]
+    QVALS = [0.0005,0.001,0.005,0.01,0.05]
+    OUTLIER_FILT_KNN_ICA = 2
+    OUTLIER_MAX_DIST_ICA = 6
+    ONT = "CC"
+
+INDIV_RANDOM_SEEDS_ICA = [random.sample(range(0,100000,1),k=max(REPS)) for x in OVERALL_REPS]
 
 rule target:
     input:
@@ -50,7 +52,7 @@ rule target:
         expand("enr/{c}/{ovr}/{fdr}/enr.csv",c=COMPONENTS, ovr=OVERALL_REPS, fdr = QVALS),
         "enr/enr.csv",
         "enr/enr-metrics.csv",
-        "ica/silhouette.csv",
+        "ica/silhouette.csv","ica/dists.csv",
         "report.html"
 
 # ------------------------------------------------------------------------------
@@ -89,10 +91,20 @@ rule ica_consensus:
     script:
         "scripts/ica-consensus.R"
 
-# # ------------------------------------------------------------------------------
-# # fdr calcs and cutoffs
-# # ------------------------------------------------------------------------------
-#
+rule combine_ica_metrics:
+    input:
+        lambda wc: expand("ica/{k}/{ovr}/consensus-{im}.csv.gz",k=COMPONENTS,ovr=OVERALL_REPS, im=wc.ica_metric)
+    output:
+        csv = "ica/{ica_metric}.csv"
+    conda:
+        "envs/all.yaml"
+    script:
+        "scripts/gather_consensus_ica_metrics.R"
+
+# ------------------------------------------------------------------------------
+# fdr calcs and cutoffs
+# ------------------------------------------------------------------------------
+
 rule fdr_calc:
     input:
         rules.ica_consensus.output.ica,
@@ -105,9 +117,9 @@ rule fdr_calc:
     script:
         "scripts/qval_calc.R"
 
-# # ------------------------------------------------------------------------------
-# # enrichment
-# # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# enrichment
+# ------------------------------------------------------------------------------
 
 rule run_topgo:
     input:
@@ -145,15 +157,25 @@ rule combine_enr_metrics:
     script:
       "scripts/gather_supp_enr_metrics.R"
 
-rule combine_silhouette:
+# ------------------------------------------------------------------------------
+# reporting
+# ------------------------------------------------------------------------------
+
+rule report_metrics:
     input:
-        expand("ica/{k}/{ovr}/consensus-silhouette.csv.gz",k=COMPONENTS,ovr=OVERALL_REPS)
+        enr_supp = rules.combine_enr_metrics.output,
+        enr = rules.combine_reps_enr.output,
+        sil = "ica/silhouette.csv",
+        dists = "ica/dists.csv"
     output:
-        sil = "ica/silhouette.csv"
+        "report.html"
+    params:
+        knn = OUTLIER_FILT_KNN_ICA,
+        max_dist = OUTLIER_MAX_DIST_ICA,
     conda:
         "envs/all.yaml"
     script:
-        "scripts/gather_silhouette.R"
+        "scripts/report.Rmd"
 
 # rule refit_consensus_usage:
 #     input:
@@ -163,17 +185,3 @@ rule combine_silhouette:
 #         "ica/{k}/{ovr}/consensus-usage.refit.csv.gz",
 #     conda:
 #         "envs/all.yaml"
-
-
-
-rule report_metrics:
-    input:
-        enr_supp = rules.combine_enr_metrics.output,
-        enr = rules.combine_reps_enr.output,
-        sil = rules.combine_silhouette.output,
-    output:
-        "report.html"
-    conda:
-        "envs/all.yaml"
-    script:
-        "scripts/report.Rmd"

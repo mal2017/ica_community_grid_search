@@ -1,5 +1,5 @@
 ---
-title: "Component Optimization"
+title: "Parameter Optimization"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
@@ -10,6 +10,15 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=F, warning = F)
 ```
+
+# Background
+
+Consenus ICA is performed by running ICA on a matrix of normalized and scaled expression scores for
+top variable genes. Each consensus ICA replicate consists of a number of subreplicates, 
+whose components are clustered to yield consensus modules.
+
+This process is replicated independently several times for each choice of `k`.
+
 
 ```{r load-pkgs}
 library(tidyverse)
@@ -24,6 +33,12 @@ enr <- read_csv(snakemake@input[['enr']])
 
 sil <- read_csv(snakemake@input[['sil']])
 #sil <- read_csv("~/work/ica_community_grid_search/test/ica/silhouette.csv")
+
+dists <- read_csv(snakemake@input[['dists']])
+#dists <- read_csv("~/work/ica_community_grid_search/test/ica/dists.csv")
+
+knn <- snakemake@params[['knn']]
+max_dist <- snakemake@params[['max_dist']]
 ```
 
 ```{r organize-inputs}
@@ -35,39 +50,80 @@ enr <- enr %>%
   filter(Significant > 2)
 ```
 
-## Silhouette
+# Distances
 
-```{r}
-ggplot(sil) +
-  stat_summary(aes(comps,silhouette), geom='line', color='red', linetype='dotted') +
+For each component identified in all replicates of a given trial 
+(trial: set of sub-replicates at a given k), `r knn` nearest neighbors were found
+and the mean of those distances to the original component represents the outlier 
+score for each component. Inspection of the the distribution of outlier scores for a given `k`
+may yield a reasonable choice for cutoff.
+
+```{r outlier-distrib}
+dists %>%
+  ggplot(aes(outlier.score,as.factor(comps))) +
+  stat_density(aes(fill=after_stat(density)),geom='raster', position='identity', interpolate=F) +
+  scale_fill_viridis_c(direction = 1, option = 'B') +
+  geom_vline(xintercept = max_dist, color='white', linetype='dashed') +
+  theme_minimal() +
+  ylab("k") +
+  facet_wrap(~rep) +
+  theme(aspect.ratio = 0.5, plot.caption = element_text(hjust=0)) +
+  labs(caption='Outlier score distribution by replicate for each k.')
+```
+
+# Silhouette
+
+*After filtering as described above* silhouette scores were calculated for each component at a given k across replicates. This score was then averaged for each consensus component in each overall cICA replicate.
+
+```{r mean-sil}
+sil %>% group_by(cluster,comps,rep) %>%
+  summarize(silhouette = mean(sil_width)) %>%
+  group_by(comps,rep) %>%
+  summarize(silhouette = mean(silhouette)) %>%
+ggplot(aes(comps,silhouette)) +
+  stat_summary(geom='line', color='red', linetype='dotted') +
+  #geom_jitter(width = 0.1) +
   stat_summary(aes(comps,silhouette, color=silhouette)) +
   theme_classic() +
   xlab("k") +
-  theme(aspect.ratio = 0.5)
+  theme(aspect.ratio = 0.5, plot.caption = element_text(hjust=0)) +
+  labs(caption='Silhouette scores across cICA replicates at a given k.')
 ```
 
-## Unique enrichment x Coverage
+# Unique enrichment x Coverage
 
-```{r}
+Unique enrichment score is calculated by finding the percentage of the top 5 enriched terms for each
+consensus module that are unique to that module.
+
+Coverage represents the percentage of terms in a given GO ontology that are
+represented within the top 5 significant enriched terms for each consensus component.
+
+```{r, cov-uniq}
 enr.supp %>%
+  dplyr::rename(coverage='cov', uniqueness='pct_unique_term') %>%
   gather(metric, value, -rep:-comps) %>%
-  filter(metric %in% c("cov","pct_unique_term")) %>%
+  filter(metric %in% c("coverage","uniqueness")) %>%
 ggplot() +
   geom_smooth(aes(comps, value, color=metric)) +
   facet_wrap(~rep) +
   theme_classic() +
-  scale_color_viridis_d(direction=-1) +
-  theme(aspect.ratio = 0.5)
+  scale_color_viridis_d(direction=-1, ) +
+  theme(aspect.ratio = 0.5, plot.caption = element_text(hjust=0)) +
+  xlab("k") + ylab('score') +
+  labs(caption = "Relationship between k and enrichment metrics.")
 ```
 
+These scores are scaled to lie between 0 and 1 and then multiplied to yield a single score
+amenable for jointly optimizing `k` and FDR cutoffs.
 
-```{r}
+```{r go-score}
 ggplot(enr.supp,aes(as.factor(comps),as.factor(qval),fill=score)) +
-  geom_tile() +
+  geom_raster(interpolate = T) +
   theme_minimal() +
   xlab("k") + ylab("qval") +
   scale_fill_viridis_c() +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1, plot.caption = element_text(hjust=0)) +
+  labs(caption = "Joint score displayed by FDR cutoff and k.")
 ```
 
 ```{r}
@@ -78,9 +134,11 @@ optimal <- enr.supp %>% arrange(desc(score)) %>% head(1) %>% dplyr::select(qval,
 
 The optimal `k` is `r optimal[['comps']]` and optimal q value cutoff is `r optimal[['qval']]`.
 
-### Module sizes
+# Module sizes
 
-```{r}
+The distributions of post-cutoff module sizes are displayed for each overall cICA replicate.
+
+```{r mod-sizes}
 fls <- Sys.glob(paste0("../test/ica/",optimal['comps'],"/*/consensus-ica.qvalues.csv.gz"))
 tst <- map_df(fls,read_csv, .id = 'rep')
 
@@ -91,12 +149,16 @@ tst %>% filter(qval < optimal['qval']) %>% group_by(module,rep) %>% tally() %>%
   scale_y_continuous(expand = c(0,0)) +
   facet_wrap(~rep) +
   scale_fill_fermenter(direction = 1, palette = 13) +
-  theme(aspect.ratio = 0.5)
+  theme(aspect.ratio = 0.5, plot.caption = element_text(hjust=0)) +
+  xlab('module size') +
+  labs(caption = 'Distribution of module sizes for each replicate at optimal params.')
 ```
 
-### TE counts in enriched modules
+# TE counts in enriched modules
 
-```{r}
+The counts of TE features in each top TE-containing module are displayed by replicate.
+
+```{r top-te-cts}
 top_te <- tst %>% 
   filter(qval < optimal['qval']) %>%
   group_by(module, rep) %>%
@@ -118,11 +180,14 @@ map(top_te,~head(.,3)) %>%
   xlab("module") +
   scale_fill_brewer(palette = 7) +
   scale_y_continuous(expand=c(0,0)) +
-  theme(aspect.ratio = 1)
+  theme(aspect.ratio = 1, plot.caption = element_text(hjust=0)) +
+  labs(caption = "Modules yielding most TEs for each replicate at optimal k and FDR.")
 ```
 
 
-### TE module enrichment in optimal choice
+# TE module enrichment in optimal choice
+
+The top GO term enrichments for the Top 2 TE-containing modules in each overall replicate are displayed.
 
 ```{r fig.width=10}
 
@@ -137,8 +202,10 @@ map(top_te,~head(.,2)) %>%
   geom_col(aes(fill=as.factor(rep):as.factor(cluster)), color='black') +
   coord_flip() +
   theme_classic() +
-  scale_fill_brewer(type = 'qual') +
-  theme(aspect.ratio = 1)
+  scale_fill_brewer(type = 'qual', name="rep:module") +
+  theme(aspect.ratio = 1, plot.caption = element_text(hjust=0)) +
+  ylab("-log10(pval)") + xlab('Term')  +
+  labs(caption = 'Top GO enrichment for Top TE-containing cluster found at optimal parameters.')
 ```
 
 

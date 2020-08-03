@@ -48,12 +48,13 @@ mat.dist.df <- mat.dist %>%
   gather(comp2,dst,-comp1) %>%
   filter(comp1 != comp2)
 
-inliers <- mat.dist.df %>%
+mat.dist.df <- mat.dist.df %>%
   group_by(comp1) %>%
   top_n(knn,desc(dst)) %>%
   group_by(comp1) %>%
-  summarize(outlier.score = mean(dst)) %>%
-  filter(outlier.score < max_dist)
+  summarize(outlier.score = mean(dst)) 
+
+inliers <- filter(mat.dist.df ,outlier.score < max_dist)
 
 mat2 <- mat[which(rownames(mat) %in% inliers$comp1),]
 
@@ -63,9 +64,9 @@ df2 <- gather(df, cluster,score,-index)
 
 km_df <- km$cluster %>% enframe(name = 'cluster',value = 'cons')
 
-sil <- cluster::silhouette(km$cluster,mat.dist)
+sil <- cluster::silhouette(km$cluster,dmatrix=mat.dist[inliers$comp1,inliers$comp1])
 
-sil_df <- as_tibble(sil[,1:3])
+sil_df <- as_tibble(sil[,1:3]) %>% mutate(component = names(km$cluster))
 
 df2 <- df2 %>%
   left_join(km_df, by="cluster")
@@ -92,8 +93,12 @@ usage2 <- unite(usage,cluster,rep,module) %>%
   group_by(cons,X1) %>%
   summarize(usage=median(usage))
 
+left_join(mat.dist.df, km_df,by=c(comp1='cluster')) %>%
+  dplyr::rename(cluster='comp1') %>%
+  mutate(comps=k, rep = snakemake@wildcards[['ovr']]) %>%
+  write_csv(snakemake@output[['dists']])
+
 write_csv(usage2, snakemake@output[['usage']])
 
-write_csv(mat.dist.df, snakemake@output[['dists']])
-
-write_csv(sil_df, snakemake@output[['silhouette']])
+mutate(sil_df,comps=k, rep = snakemake@wildcards[['ovr']]) %>%
+  write_csv(snakemake@output[['silhouette']])
