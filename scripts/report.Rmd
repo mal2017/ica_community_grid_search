@@ -71,6 +71,37 @@ dists %>%
   labs(caption='Outlier score distribution by replicate for each k.')
 ```
 
+# Duplication
+
+*After filtering as described above* duplication rate was calculated from the
+proportion of discovered modules in each trial with a highly correlatated module discovered in the same trial (Pearson >= 0.99).
+
+```{r}
+dups <- Sys.glob(paste0("../test/ica/*/*/consensus-ica.csv.gz")) %>%
+  tibble(file=.) %>%
+  mutate(k=str_extract(file,"(?<=ica\\/)\\d+(?=\\/)")) %>%
+  mutate(rep=str_extract(file,"(?<=\\/)\\d+(?=\\/consensus)")) %>%
+  mutate(data = map(file, read_csv)) %>%
+  mutate(data = map(data,column_to_rownames,'index')) %>%
+  mutate(data = map(data,cor)) %>%
+  mutate(data = map(data,as_tibble, rownames='module')) %>%
+  mutate(data = map(data,gather,module2, corr, -module)) %>%
+  unnest(cols=data) %>%
+  filter(module!=module2) %>%
+  group_by(k,rep,module) %>%
+  summarize(closest = max(corr)) %>%
+  group_by(k,rep) %>%
+  summarize(dup.rate = sum(closest>=0.99)/n())
+
+dups %>%
+  ggplot(aes(as.numeric(k), dup.rate)) +
+  stat_summary(geom='line', color='red', linetype='dotted') +
+  stat_summary(aes(as.numeric(k), dup.rate)) +
+  theme_classic() +
+  theme(aspect.ratio = 0.5) +
+  xlab("k")
+```
+
 # Silhouette
 
 *After filtering as described above* silhouette scores were calculated for each component at a given k across replicates. This score was then averaged for each consensus component in each overall cICA replicate.
